@@ -1,3 +1,4 @@
+
 # Heart Disease Prediction Application
 
 A web application that predicts the likelihood of heart disease based on patient health metrics. The application uses a machine learning model built with scikit-learn to analyze input parameters and provide a prediction with confidence level.
@@ -73,3 +74,5 @@ The application uses the MLPClassifier (Multi-layer Perceptron) from scikit-lear
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
+
+
