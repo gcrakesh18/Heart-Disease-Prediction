@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Prediction - Model Metrics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .metrics-card {
+            transition: transform 0.3s;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metrics-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+        .header-buttons {
+            margin-bottom: 20px;
+        }
+        .success-metric {
+            color: #198754;
+            font-weight: bold;
+        }
+        .warning-metric {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .danger-metric {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .nav-tabs .nav-link {
+            color: #333;
+            font-weight: 500;
+        }
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        .plot-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .plot-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .achievement-badge {
+            font-size: 24px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .model-details-table {
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="header-buttons d-flex justify-content-between align-items-center">
+            <h1>Model Performance Metrics</h1>
+            <div>
+                <a href="/" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-house-door"></i> Back to Home
+                </a>
+                <a href="/train" class="btn btn-primary">
+                    <i class="bi bi-arrow-repeat"></i> Retrain Model
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% if not has_metrics %}
+            <div class="alert alert-warning">
+                <h4>No metrics available</h4>
+                <p>The model has not been trained yet or metrics data is not available. Please train the model first.</p>
+                {% if error %}
+                    <hr>
+                    <p><strong>Error:</strong> {{ error }}</p>
+                {% endif %}
+                <a href="/train" class="btn btn-primary mt-2">Train Model</a>
+            </div>
+        {% else %}
+            <!-- Key Metrics Section -->
+            <div class="row mb-4">
+                <!-- Accuracy Card -->
+                <div class="col-md-4">
+                    <div class="card metrics-card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Test Accuracy</h5>
+                            <div class="display-3 mb-2 
+                                {% if accuracy >= 90 %}success-metric
+                                {% elif accuracy >= 80 %}warning-metric
+                                {% else %}danger-metric{% endif %}">
+                                {{ "%.1f"|format(accuracy) }}%
+                            </div>
+                            {% if target_achieved %}
+                                <div><span class="achievement-badge"></span> </div>
+                            {% endif %}
+                            <div class="text-muted mt-2">Training: {{ "%.1f"|format(training_acc) }}%</div>
+                            {% if overfitting > 5 %}
+                                <div class="text-danger">
+                                    <small>Potential overfitting detected ({{ "%.1f"|format(overfitting) }}% gap)</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Precision/Recall Card -->
+                <div class="col-md-4">
+                    <div class="card metrics-card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Precision & Recall</h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="display-6 
+                                        {% if precision >= 85 %}success-metric
+                                        {% elif precision >= 75 %}warning-metric
+                                        {% else %}danger-metric{% endif %}">
+                                        {{ "%.1f"|format(precision) }}%
+                                    </div>
+                                    <small>Precision</small>
+                                </div>
+                                <div class="col-6">
+                                    <div class="display-6
+                                        {% if recall >= 85 %}success-metric
+                                        {% elif recall >= 75 %}warning-metric
+                                        {% else %}danger-metric{% endif %}">
+                                        {{ "%.1f"|format(recall) }}%
+                                    </div>
+                                    <small>Recall</small>
+                                </div>
+                            </div>
+                            <hr>
+                            <div>F1 Score: <span 
+                                class="{% if f1_score >= 85 %}success-metric
+                                {% elif f1_score >= 75 %}warning-metric
+                                {% else %}danger-metric{% endif %}">{{ "%.1f"|format(f1_score) }}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AUC & Model Info Card -->
+                <div class="col-md-4">
+                    <div class="card metrics-card h-100">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">ROC AUC Score</h5>
+                            <div class="display-4
+                                {% if roc_auc >= 90 %}success-metric
+                                {% elif roc_auc >= 80 %}warning-metric
+                                {% else %}danger-metric{% endif %}">
+                                {{ "%.1f"|format(roc_auc) }}%
+                            </div>
+                            <hr>
+                            <div class="text-start">
+                                <small><strong>Model Type:</strong> {{ model_type }}</small><br>
+                                <small><strong>Last Trained:</strong> {{ timestamp }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Tabs -->
+            <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="confusion-tab" data-bs-toggle="tab" data-bs-target="#confusion" type="button" role="tab" aria-controls="confusion" aria-selected="true">
+                        Confusion Matrix
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="roc-tab" data-bs-toggle="tab" data-bs-target="#roc" type="button" role="tab" aria-controls="roc" aria-selected="false">
+                        ROC Curve
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="learning-tab" data-bs-toggle="tab" data-bs-target="#learning" type="button" role="tab" aria-controls="learning" aria-selected="false">
+                        Learning Curve
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="precision-recall-tab" data-bs-toggle="tab" data-bs-target="#precision-recall" type="button" role="tab" aria-controls="precision-recall" aria-selected="false">
+                        Precision-Recall
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab" aria-controls="details" aria-selected="false">
+                        Model Details
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="myTabContent">
+                <!-- Confusion Matrix Tab -->
+                <div class="tab-pane fade show active" id="confusion" role="tabpanel" aria-labelledby="confusion-tab">
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <div class="plot-container">
+                                {% if available_plots.confusion_matrix %}
+                                    <img src="{{ plots.confusion_matrix }}" alt="Confusion Matrix" class="img-fluid">
+                                {% else %}
+                                    <div class="alert alert-warning">Confusion matrix visualization not available</div>
+                                {% endif %}
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Understanding the Confusion Matrix</h5>
+                                    <p>The confusion matrix shows the number of correct and incorrect predictions made by the model:</p>
+                                    <ul>
+                                        <li><strong>True Negative (top-left):</strong> Correctly predicted as healthy</li>
+                                        <li><strong>False Positive (top-right):</strong> Incorrectly predicted as having heart disease</li>
+                                        <li><strong>False Negative (bottom-left):</strong> Incorrectly predicted as healthy</li>
+                                        <li><strong>True Positive (bottom-right):</strong> Correctly predicted as having heart disease</li>
+                                    </ul>
+                                    <p><strong>Note:</strong> For medical diagnostics, minimizing false negatives is crucial to ensure patients with heart disease are not missed.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ROC Curve Tab -->
+                <div class="tab-pane fade" id="roc" role="tabpanel" aria-labelledby="roc-tab">
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <div class="plot-container">
+                                {% if available_plots.roc_curve %}
+                                    <img src="{{ plots.roc_curve }}" alt="ROC Curve" class="img-fluid">
+                                {% else %}
+                                    <div class="alert alert-warning">ROC curve visualization not available</div>
+                                {% endif %}
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Understanding the ROC Curve</h5>
+                                    <p>The Receiver Operating Characteristic (ROC) curve shows the trade-off between sensitivity (true positive rate) and specificity (1 - false positive rate) at various threshold settings:</p>
+                                    <ul>
+                                        <li><strong>AUC (Area Under Curve):</strong> Measure of the model's ability to distinguish between classes</li>
+                                        <li><strong>Perfect Classifier:</strong> AUC = 1.0</li>
+                                        <li><strong>Random Classifier:</strong> AUC = 0.5 (diagonal dashed line)</li>
+                                    </ul>
+                                    <p>A higher AUC indicates better model performance.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Learning Curve Tab -->
+                <div class="tab-pane fade" id="learning" role="tabpanel" aria-labelledby="learning-tab">
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <div class="plot-container">
+                                {% if available_plots.learning_curve %}
+                                    <img src="{{ plots.learning_curve }}" alt="Learning Curve" class="img-fluid">
+                                {% else %}
+                                    <div class="alert alert-warning">Learning curve visualization not available</div>
+                                {% endif %}
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Understanding Learning Curves</h5>
+                                    <p>Learning curves show how the model's performance improves as it sees more training data:</p>
+                                    <ul>
+                                        <li><strong>Training accuracy (blue):</strong> Performance on data the model has seen</li>
+                                        <li><strong>Validation accuracy (green):</strong> Performance on unseen data</li>
+                                        <li><strong>Convergence:</strong> When both curves plateau and get closer together</li>
+                                    </ul>
+                                    <p><strong>Gap analysis:</strong> A large gap between training and validation indicates overfitting. Little improvement with more data suggests the model may benefit from increased complexity.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Precision-Recall Tab -->
+                <div class="tab-pane fade" id="precision-recall" role="tabpanel" aria-labelledby="precision-recall-tab">
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <div class="plot-container">
+                                {% if available_plots.precision_recall %}
+                                    <img src="{{ plots.precision_recall }}" alt="Precision-Recall Curve" class="img-fluid">
+                                {% else %}
+                                    <div class="alert alert-warning">Precision-Recall curve visualization not available</div>
+                                {% endif %}
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Understanding the Precision-Recall Curve</h5>
+                                    <p>The Precision-Recall curve shows the trade-off between precision and recall at different threshold settings:</p>
+                                    <ul>
+                                        <li><strong>Precision:</strong> Proportion of positive identifications that were actually correct</li>
+                                        <li><strong>Recall:</strong> Proportion of actual positives that were identified correctly</li>
+                                        <li><strong>AUC:</strong> Area under the curve, higher is better</li>
+                                    </ul>
+                                    <p>For medical diagnostics like heart disease detection, balancing precision and recall is critical for minimizing both false positives and false negatives.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Details Tab -->
+                <div class="tab-pane fade" id="details" role="tabpanel" aria-labelledby="details-tab">
+                    <div class="row">
+                        <div class="col-md-8 offset-md-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Model Architecture and Parameters</h5>
+                                    <table class="table table-striped model-details-table">
+                                        <tbody>
+                                            <tr>
+                                                <th scope="row">Model Type</th>
+                                                <td>{{ model_type }}</td>
+                                            </tr>
+                                            {% for key, value in model_details.items() %}
+                                                {% if key != 'type' %}
+                                                <tr>
+                                                    <th scope="row">{{ key|replace('_', ' ')|title }}</th>
+                                                    <td>{{ value }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <tr>
+                                                <th scope="row">Last Trained</th>
+                                                <td>{{ timestamp }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    
+                                    <h5 class="card-title mt-4">Performance Summary</h5>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <table class="table table-striped model-details-table">
+                                                <tbody>
+                                                    <tr>
+                                                        <th scope="row">Test Accuracy</th>
+                                                        <td>{{ "%.2f"|format(accuracy) }}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Training Accuracy</th>
+                                                        <td>{{ "%.2f"|format(training_acc) }}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">Precision</th>
+                                                        <td>{{ "%.2f"|format(precision) }}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <table class="table table-striped model-details-table">
+                                                <tbody>
+                                                    <tr>
+                                                        <th scope="row">Recall</th>
+                                                        <td>{{ "%.2f"|format(recall) }}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">F1 Score</th>
+                                                        <td>{{ "%.2f"|format(f1_score) }}%</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th scope="row">ROC AUC</th>
+                                                        <td>{{ "%.2f"|format(roc_auc) }}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if target_achieved %}
+                                    
+                                    {% endif %}
+                                    
+                                    {% if overfitting > 5 %}
+                                    <div class="alert alert-warning">
+                                        <strong>⚠️ Potential Overfitting Detected:</strong> The model performs {{ "%.1f"|format(overfitting) }}% better on training data than on test data. Consider using regularization or modifying the model architecture.
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

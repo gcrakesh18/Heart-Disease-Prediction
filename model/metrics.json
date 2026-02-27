@@ -1,0 +1,1 @@
+{"accuracy": 97.07792207792207, "precision": 97.0972670593164, "recall": 97.07792207792207, "f1": 97.07838424189292, "roc_auc": 98.24050632911391, "training_accuracy": 99.442119944212, "timestamp": "2025-03-24 16:16:35", "model_type": "Neural Network", "confusion_matrix": [[147, 3], [6, 152]], "plots": {"precision_recall_image": "exists"}}
