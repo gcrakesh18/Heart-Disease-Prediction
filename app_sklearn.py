@@ -65,7 +65,7 @@ def ensure_model_is_trained():
     else:
         print("Model found. Ready to make predictions.")
 
-# Train model on startup
+# Train model on startup.
 ensure_model_is_trained()
 
 @app.route('/')
