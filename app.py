@@ -55,7 +55,7 @@ def predict():
                 'message': 'Model not trained yet. Please train the model first.'
             })
         
-        # Get form data and convert to numpy array
+        # Get form data and convert to numpy array.
         data = []
         for field in request.form:
             data.append(float(request.form[field]))
